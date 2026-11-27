@@ -1,7 +1,7 @@
 {
   "name": "back-end",
   "version": "1.0.0",
-  "description": "back-end da aplicação",
+  "description": "API do HealthIA (Alta Assistida): Node.js, Express, TypeScript e Zod",
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -35,8 +35,13 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
+    "@types/supertest": "^7.2.1",
     "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

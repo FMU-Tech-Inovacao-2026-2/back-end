@@ -1,0 +1,32 @@
+services:
+  # Desenvolvimento com recarga automática (código montado como volume).
+  api-dev:
+    build:
+      context: .
+      target: builder
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+
+  # Mesma imagem que vai para o Cloud Run, com o .env local.
+  api-prod:
+    build:
+      context: .
+      target: runner
+    ports:
+      - "3001:8080"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - TRUST_PROXY=0
+      - HEALTHIA_MODO_PILOTO=true

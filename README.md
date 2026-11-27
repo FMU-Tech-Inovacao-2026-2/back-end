@@ -1,95 +1,89 @@
-# back-end — HealthIA
+# Back-end — HealthIA
 
-API em Node.js + TypeScript (Express 5, Zod, Gemini). Faz parte do projeto
-[Alta Assistida](https://github.com/FMU-Tech-Inovacao-2026-2): transforma o sumário de alta
-hospitalar em um plano de cuidados, sempre com aprovação de um profissional de saúde.
+API do módulo Alta Assistida, em Node.js, Express, TypeScript e Zod. Todos os usuários e prontuários usados nesta versão são fictícios.
 
-> **Somente dados fictícios.** Dados de saúde são dados pessoais sensíveis (LGPD).
+## Executar localmente
 
-## Como rodar
+Requer Node.js 20.19 ou superior.
 
-```bash
+```powershell
 npm install
-cp .env.example .env     # defina JWT_SECRET (mínimo 32 caracteres)
-npm run dev              # http://localhost:3000
-npm test                 # testes unitários
-npm run build && npm start
+Copy-Item .env.example .env
 ```
 
-## Estrutura
+Edite `.env` e configure um `JWT_SECRET` aleatório com pelo menos 32 caracteres. Escolha o modo de extração em `GEMINI_PROVEDOR`:
 
-```
-src/
-├── server.ts                  # bootstrap
-├── app.ts                     # createApp(deps): middlewares e rotas
-├── config/env.ts              # variáveis de ambiente validadas com Zod
-├── lib/                       # jwt, password (scrypt), errors, logger
-├── middleware/                # authenticate, requireRole, rateLimit, errorHandler
-└── modules/
-    ├── auth/                  # rotas, schema (Zod) e service do login
-    └── users/                 # model + UserRepository (hoje em memória)
-tests/auth.test.ts
-```
+| Valor | Como extrai | Requisito |
+| --- | --- | --- |
+| `demonstracao` | Respostas preparadas para os sumários do catálogo, sem IA | Nenhum |
+| `api-key` | Gemini API | `GEMINI_API_KEY` |
+| `vertex` | Gemini no Vertex AI, com as credenciais do Google Cloud (ADC) | `GOOGLE_CLOUD_PROJECT` e `gcloud auth application-default login` |
 
-## Autenticação
+Não compartilhe nem versione `.env`.
 
-### `POST /auth/login`
-
-```json
-{ "email": "medica@demo.altaassistida.dev", "senha": "Demo@12345" }
+```powershell
+npm run dev
 ```
 
-Resposta `200`:
+API: `http://localhost:3000`. Verificação: `GET /health`.
 
-```json
-{
-  "accessToken": "<jwt>",
-  "tokenType": "Bearer",
-  "expiresIn": 3600,
-  "user": { "id": "u-001", "nome": "Dra. Ana Demo", "email": "medica@demo.altaassistida.dev", "role": "profissional" }
-}
+## Contas fictícias de desenvolvimento
+
+| Perfil | E-mail | Senha |
+| --- | --- | --- |
+| Profissional | `medica@demo.altaassistida.dev` | `Demo@12345` |
+| Paciente | `paciente@demo.altaassistida.dev` | `Demo@12345` |
+
+Os papéis disponíveis são `profissional` e `paciente`; não há papel `admin`. Para que o front-end use esta API, configure `VITE_MODO_BACKEND=true` e `VITE_API_URL` no front-end.
+
+## Fluxo disponível
+
+1. O profissional cria uma extração (`POST /alta/extracoes`) a partir de um sumário da base, de texto digitado ou do texto de um arquivo lido no navegador.
+2. O servidor confere cada citação contra o texto original e marca `origem_verificada`.
+3. O profissional consulta o termo vigente (`GET /alta/termo-aceite`) e aprova os itens escolhidos (`POST /alta/extracoes/:id/aprovar`), enviando o aceite com todas as declarações.
+4. O plano é gravado com o registro do aceite: profissional, data, versão do termo e hash SHA-256 do conteúdo aprovado.
+5. O paciente consulta só o próprio plano (`GET /alta/planos/me`).
+
+Rotas, formatos e códigos de erro estão no contrato compartilhado: `PitchInicial/pitchInicial/docs/contrato-api.md`.
+
+## Aceite profissional e LGPD
+
+- O termo fica em `src/modules/alta/alta.termo.ts`. Ao mudar o texto, incremente a versão; aprovações com versão antiga recebem `422 ACEITE_INCOMPLETO`.
+- Itens sem origem verificada não podem ser aprovados (`403`).
+- A trilha de auditoria (`src/lib/auditoria.ts`) registra IDs, contagens, versão do termo e hash, nunca texto clínico, senha ou token.
+- O logger remove cabeçalho de autorização, senhas, tokens e textos clínicos.
+- Respostas usam `Cache-Control: no-store`.
+
+A redação do termo é acadêmica e precisa de validação jurídica antes de uso com pacientes reais.
+
+## Docker
+
+```powershell
+docker compose up api-dev     # desenvolvimento com recarga, porta 3000
+docker compose up api-prod    # imagem de produção, porta 3001
 ```
 
-| Status | Quando |
-| ------ | ------ |
-| 400 | corpo inválido (e-mail mal formado, senha vazia, JSON quebrado) |
-| 401 | e-mail ou senha inválidos (mensagem única, também para usuário inativo) |
-| 429 | mais de 10 tentativas em 15 min para o mesmo IP + e-mail |
+A imagem de produção usa `node:22-alpine`, roda sem privilégios na porta 8080 e não contém `.env`.
 
-### `GET /auth/me`
+## Produção (Cloud Run + Vertex AI)
 
-Header `Authorization: Bearer <accessToken>` → `{ "user": { ... } }`.
+Sem banco persistente, a API só inicia com `NODE_ENV=production` se `HEALTHIA_MODO_PILOTO=true`. Esse modo serve para piloto acadêmico com dados fictícios. Em produção também são exigidos um `JWT_SECRET` diferente do exemplo e um `CORS_ORIGIN` explícito, sem `*`.
 
-### Protegendo outras rotas
+O workflow `.github/workflows/deploy.yml` publica no Cloud Run após o CI verde na `main`, usando Workload Identity Federation e o segredo do JWT no Secret Manager. O passo a passo está em `PitchInicial/pitchInicial/docs/deploy.md`.
 
-```ts
-router.post('/extracoes', authenticate(jwtSecret), requireRole('profissional'), handler);
+## CI
+
+`.github/workflows/ci.yml` roda em cada push e pull request: `typecheck`, `test`, `build`, auditoria das dependências de produção e build da imagem com checagem de `/health`.
+
+## Limitações
+
+- Usuários, sumários, extrações e planos ficam em memória e se perdem ao reiniciar. Por isso o deploy usa uma única instância.
+- Use apenas textos inventados. A IA não diagnostica, não recomenda tratamento e não preenche lacunas.
+
+## Comandos de desenvolvimento
+
+```powershell
+npm test
+npm run typecheck
+npm run build
 ```
-
-Perfis (`role`): `profissional` e `paciente`.
-
-### Usuários de desenvolvimento (fictícios)
-
-| E-mail | Perfil | Senha |
-| ------ | ------ | ----- |
-| medica@demo.altaassistida.dev | profissional | `Demo@12345` |
-| paciente@demo.altaassistida.dev | paciente | `Demo@12345` |
-
-Existem só fora de produção. Com `NODE_ENV=production` o servidor se recusa a subir até
-existir um `UserRepository` real.
-
-## Decisões de segurança
-
-- Senhas com **scrypt** (`node:crypto`), salt aleatório e comparação em tempo constante.
-- JWT **HS256** implementado com `node:crypto`; rejeita `alg=none`, assinatura inválida e token expirado.
-- Resposta idêntica para e-mail inexistente, senha errada e usuário inativo, com hash falso para
-  igualar o tempo de resposta (evita enumeração de usuários).
-- `senhaHash` nunca sai da API; o logger omite `authorization` e `senha`.
-- Helmet, CORS restrito por `CORS_ORIGIN` e limite de tamanho de senha (evita DoS no scrypt).
-
-## Próximos passos
-
-1. `SupabaseUserRepository` implementando `UserRepository` (e cadastro de usuários).
-2. `POST /extracoes` com Gemini + validação de `trecho_origem`.
-3. Fluxo de aprovação (`pendente` → `aprovado`) e leitura do plano pelo paciente.
-4. Atualizar o README do `pitchInicial` (a stack do back agora é Node/Express, não FastAPI).

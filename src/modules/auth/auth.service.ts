@@ -1,3 +1,4 @@
+import { auditoriaNula, type Auditoria } from '../../lib/auditoria';
 import { signJwt } from '../../lib/jwt';
 import { verifyPassword, hashPassword } from '../../lib/password';
 import { unauthorized } from '../../lib/errors';
@@ -24,6 +25,7 @@ export class AuthService {
   constructor(
     private readonly users: UserRepository,
     private readonly config: AuthConfig,
+    private readonly auditoria: Auditoria = auditoriaNula,
   ) {}
 
   async login({ email, senha }: LoginInput): Promise<LoginResult> {
@@ -32,6 +34,7 @@ export class AuthService {
 
     // mesma mensagem para e-mail inexistente, senha errada ou usuário inativo
     if (!user || !ok || !user.ativo) {
+      this.auditoria.registrar('auth.login_falha', { usuario_id: user?.id ?? null });
       throw unauthorized('E-mail ou senha inválidos');
     }
 
@@ -41,6 +44,7 @@ export class AuthService {
       this.config.expiresInSeconds,
     );
 
+    this.auditoria.registrar('auth.login_sucesso', { usuario_id: user.id, perfil: user.role });
     return {
       accessToken,
       tokenType: 'Bearer',

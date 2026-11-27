@@ -8,6 +8,7 @@ import type { User } from './user.model';
 export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
+  listPatients(): Promise<User[]>;
 }
 
 export class InMemoryUserRepository implements UserRepository {
@@ -24,6 +25,10 @@ export class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string) {
     return this.users.find((u) => u.id === id) ?? null;
+  }
+
+  async listPatients() {
+    return this.users.filter((u) => u.role === 'paciente' && u.ativo);
   }
 }
 
