@@ -1,0 +1,21 @@
+# Segredos: entram pelo ambiente de execução, nunca pela imagem.
+**/.env
+**/.env.*
+!.env.example
+
+# Git, editores e ferramentas locais
+.git
+.github
+.claude
+.vscode
+.idea
+
+# Dependências e saídas locais (a imagem instala e compila do zero)
+node_modules
+dist
+*.log
+
+# Não fazem parte da execução
+tests
+docker-compose.yml
+README.md
