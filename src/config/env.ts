@@ -12,6 +12,8 @@ const schema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
+    /** Caminho opcional de um arquivo JSONL com a trilha de auditoria (uma linha por evento). */
+    AUDITORIA_ARQUIVO: z.string().trim().optional().transform((valor) => valor || undefined),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     CORS_ORIGIN: z.string().default('http://localhost:5173'),
     /** Quantidade de proxies confiáveis à frente da API (Cloud Run/load balancer = 1). */
@@ -27,7 +29,13 @@ const schema = z
      */
     GEMINI_PROVEDOR: z.enum(['api-key', 'vertex', 'demonstracao']).default('api-key'),
     GEMINI_API_KEY: z.string().optional(),
-    GEMINI_MODEL: z.string().trim().min(1).default('gemini-2.5-flash'),
+    GEMINI_MODEL: z.string().trim().min(1).default('gemini-3.5-flash'),
+    /** Modelos tentados em ordem quando o principal está indisponível, sobrecarregado ou descontinuado. */
+    GEMINI_MODELOS_RESERVA: z
+      .string()
+      .default('gemini-3.8-flash,gemini-3.1-flash-lite')
+      .transform((valor) => valor.split(',').map((item) => item.trim()).filter(Boolean)),
+    GEMINI_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(120_000).default(45_000),
     GOOGLE_CLOUD_PROJECT: z.string().trim().optional(),
     GOOGLE_CLOUD_LOCATION: z.string().trim().min(1).default('us-central1'),
 

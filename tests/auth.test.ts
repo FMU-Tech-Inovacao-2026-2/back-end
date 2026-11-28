@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hashPassword, verifyPassword } from '../src/lib/password';
-import { signJwt, verifyJwt } from '../src/lib/jwt';
-import { AuthService } from '../src/modules/auth/auth.service';
-import { InMemoryUserRepository } from '../src/modules/users/user.repository';
+import { InMemoryUserRepository } from '../src/adapters/persistencia/memoria';
+import { criarServicoToken, signJwt, verifyJwt } from '../src/adapters/seguranca/jwt';
+import { hashPassword, servicoSenhaScrypt, verifyPassword } from '../src/adapters/seguranca/senhas';
+import { AuthService } from '../src/application/auth';
+import { ErroDominio } from '../src/domain/erros';
 
 const SECRET = 'x'.repeat(40);
 
@@ -36,7 +37,7 @@ test('login: sucesso, senha errada, e-mail inexistente e usuário inativo', asyn
     { id: '1', nome: 'Ana', email: 'ana@x.com', senhaHash: await hashPassword('Senha@123'), role: 'profissional', ativo: true },
     { id: '2', nome: 'Bob', email: 'bob@x.com', senhaHash: await hashPassword('Senha@123'), role: 'paciente', ativo: false },
   ]);
-  const svc = new AuthService(repo, { jwtSecret: SECRET, expiresInSeconds: 3600 });
+  const svc = new AuthService({ users: repo, senhas: servicoSenhaScrypt, tokens: criarServicoToken(SECRET, 3600) });
 
   const ok = await svc.login({ email: 'ana@x.com', senha: 'Senha@123' });
   assert.equal(ok.tokenType, 'Bearer');
@@ -48,7 +49,7 @@ test('login: sucesso, senha errada, e-mail inexistente e usuário inativo', asyn
     { email: 'nao@x.com', senha: 'Senha@123' },
     { email: 'bob@x.com', senha: 'Senha@123' },
   ]) {
-    await assert.rejects(svc.login(input), (e: any) => e.status === 401 && e.message === 'E-mail ou senha inválidos');
+    await assert.rejects(svc.login(input), (e: unknown) => e instanceof ErroDominio && e.tipo === 'nao_autenticado' && e.message === 'E-mail ou senha inválidos');
   }
 
   assert.equal((await svc.me('1')).email, 'ana@x.com');
