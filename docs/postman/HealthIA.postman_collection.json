@@ -1,0 +1,861 @@
+{
+  "info": {
+    "name": "HealthIA — API (dados fictícios)",
+    "_postman_id": "6f1c2a9e-healthia-alta-assistida",
+    "description": "Coleção da API HealthIA (Alta Assistida). Use SOMENTE dados fictícios.\n\nOrdem sugerida: 1. Login profissional → 2. Termo de aceite → 3. Criar extração (texto) → 4. Aprovar extração → 5. Login paciente → 6. Meu plano.\n\nOs scripts guardam token, IDs e versão do termo nas variáveis da coleção. Contrato completo: PitchInicial/pitchInicial/docs/contrato-api.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenPaciente",
+      "value": ""
+    },
+    {
+      "key": "extracaoId",
+      "value": ""
+    },
+    {
+      "key": "versaoTermo",
+      "value": ""
+    },
+    {
+      "key": "declaracoes",
+      "value": "[]"
+    },
+    {
+      "key": "pacienteId",
+      "value": "u-002"
+    },
+    {
+      "key": "sumarioFichaId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Saúde",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Mostra o modo de extração (api-key, vertex ou demonstracao).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API no ar', () => pm.response.to.have.status(200));",
+                  "console.log('Modo de extração:', pm.response.json().extracao);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Autenticação",
+      "item": [
+        {
+          "name": "Login profissional",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Conta fictícia de desenvolvimento. Guarda o token em {{token}}.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"medica@demo.altaassistida.dev\",\n  \"senha\": \"Demo@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"paciente@demo.altaassistida.dev\",\n  \"senha\": \"Demo@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tokenPaciente', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quem sou eu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Alta Assistida (profissional)",
+      "item": [
+        {
+          "name": "Termo de aceite vigente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/termo-aceite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "termo-aceite"
+              ]
+            },
+            "description": "Guarda a versão e os IDs das declarações para a aprovação.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const termo = pm.response.json();",
+                  "pm.collectionVariables.set('versaoTermo', termo.versao);",
+                  "pm.collectionVariables.set('declaracoes', JSON.stringify(termo.declaracoes.map(d => d.id)));",
+                  "pm.test('Termo com declarações', () => pm.expect(termo.declaracoes.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar extração (texto) — gera sugestões e avisos",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes"
+              ]
+            },
+            "description": "Chama a IA (Gemini) com o texto FICTÍCIO. A resposta traz `sugestoes` (medicamento, cuidado, retorno e `alerta`, que são os avisos para o médico revisar), `nao_informado` (lacunas) e `ia` (modelo, tokens, tempo). `origem_verificada` é calculado pelo servidor. Com GEMINI_PROVEDOR=demonstracao, texto livre recebe 503.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origem\": \"texto\",\n  \"paciente_id\": \"{{pacienteId}}\",\n  \"texto\": \"SUMÁRIO DE ALTA — CASO FICTÍCIO\\n\\nPaciente: Paciente Demo (identificação inventada)\\n\\nMedicações na alta:\\n- Losartana 50 mg por via oral uma vez ao dia, pela manhã.\\n- Dipirona 500 mg por via oral a cada 6 horas se houver dor, por até 5 dias.\\n\\nCuidados: medir a pressão arterial todos os dias e anotar os valores.\\n\\nRetorno: consulta com clínica médica em 30 dias.\\n\\nSinais de alerta: procurar atendimento se houver dor no peito ou falta de ar.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "const e = pm.response.json();",
+                  "pm.collectionVariables.set('extracaoId', e.id);",
+                  "console.log('Modelo:', e.ia && e.ia.modelo, '| tempo (ms):', e.ia && e.ia.duracao_ms, '| reparos:', e.ia && e.ia.reparos);",
+                  "e.sugestoes.forEach(s => console.log((s.origem_verificada ? '✓' : '✕'), s.categoria, '-', s.titulo));",
+                  "console.log('Não informado:', e.nao_informado);",
+                  "pm.test('Toda sugestão traz trecho de origem', () => e.sugestoes.forEach(s => pm.expect(s.trecho_origem).to.be.a('string')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar extração (sumário da base)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes"
+              ]
+            },
+            "description": "Funciona também em modo demonstração. Inclui um erro proposital da IA (citação inexistente).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origem\": \"base\",\n  \"paciente_id\": \"{{pacienteId}}\",\n  \"sumario_id\": \"sumario-cardiaco-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('extracaoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar extração",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes/{{extracaoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes",
+                "{{extracaoId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Aprovar extração (com aceite e motivos)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes/{{extracaoId}}/aprovar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes",
+                "{{extracaoId}}",
+                "aprovar"
+              ]
+            },
+            "description": "Rode antes 'Termo de aceite vigente'. Sem todas as declarações: 422. Reprovar sem motivo: 400.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{corpoAprovacao}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Monta o corpo a partir da extração: aprova as sugestões com origem verificada,",
+                  "// exceto a primeira, que é reprovada com motivo (salvaguarda G2). Itens sem origem",
+                  "// confirmada são reprovados pelo servidor automaticamente.",
+                  "const base = pm.collectionVariables.get('baseUrl');",
+                  "const id = pm.collectionVariables.get('extracaoId');",
+                  "pm.sendRequest({ url: base + '/alta/extracoes/' + id, header: { Authorization: 'Bearer ' + pm.collectionVariables.get('token') } }, (err, res) => {",
+                  "  const verificadas = res.json().sugestoes.filter(s => s.origem_verificada);",
+                  "  const [reprovada, ...aprovadas] = verificadas;",
+                  "  const corpo = {",
+                  "    itens_aprovados: aprovadas.map(s => s.id),",
+                  "    itens_reprovados: reprovada ? [{ id: reprovada.id, motivo: 'Orientação será dada por outro meio' }] : [],",
+                  "    sugestoes_editadas: [],",
+                  "    aceite: { versao_termo: pm.collectionVariables.get('versaoTermo'), declaracoes: JSON.parse(pm.collectionVariables.get('declaracoes')) }",
+                  "  };",
+                  "  pm.variables.set('corpoAprovacao', JSON.stringify(corpo));",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "console.log('Hash do aceite:', p.aceite.hash_conteudo);",
+                  "console.log('Reprovações:', p.reprovacoes);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comprovante (plano + reprovações)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes/{{extracaoId}}/plano",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes",
+                "{{extracaoId}}",
+                "plano"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar minhas extrações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sumários fictícios da base",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/sumarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "sumarios"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transcrever PDF pela IA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/alta/transcricoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "transcricoes"
+              ]
+            },
+            "description": "Gere o base64 no PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes('alta-ficticia.pdf')). O texto volta para conferência e não é salvo. Até 10 MB.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome_arquivo\": \"alta-ficticia.pdf\",\n  \"pdf_base64\": \"COLE_AQUI_O_PDF_EM_BASE64\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Fichário de pacientes",
+      "item": [
+        {
+          "name": "Listar pacientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes?busca=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes?busca="
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cadastrar paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "Muda {{pacienteId}} para o paciente criado. Para voltar ao paciente de demonstração, use u-002.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Paciente Postman Fictício\",\n  \"email\": \"postman.ficticio@demo.healthia.dev\",\n  \"data_nascimento\": \"1975-04-12\",\n  \"numero_prontuario\": \"PAC-POSTMAN-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pacienteId', pm.response.json().paciente.id);",
+                  "console.log('Senha provisória (exibida uma única vez):', pm.response.json().senha_provisoria);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ficha do paciente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteId}}"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Adicionar sumário à ficha",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteId}}/sumarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteId}}",
+                "sumarios"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origem\": \"texto\",\n  \"titulo\": \"Alta da clínica médica (fictício)\",\n  \"texto\": \"SUMÁRIO DE ALTA — CASO FICTÍCIO\\n\\nPaciente: Paciente Demo (identificação inventada)\\n\\nMedicações na alta:\\n- Losartana 50 mg por via oral uma vez ao dia, pela manhã.\\n- Dipirona 500 mg por via oral a cada 6 horas se houver dor, por até 5 dias.\\n\\nCuidados: medir a pressão arterial todos os dias e anotar os valores.\\n\\nRetorno: consulta com clínica médica em 30 dias.\\n\\nSinais de alerta: procurar atendimento se houver dor no peito ou falta de ar.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('sumarioFichaId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Criar extração a partir da ficha",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/alta/extracoes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "extracoes"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origem\": \"ficha\",\n  \"paciente_id\": \"{{pacienteId}}\",\n  \"sumario_id\": \"{{sumarioFichaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('extracaoId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Paciente",
+      "item": [
+        {
+          "name": "Meu plano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/alta/planos/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "alta",
+                "planos",
+                "me"
+              ]
+            },
+            "description": "Use o login do paciente. 404 enquanto não houver plano aprovado para a conta.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenPaciente}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

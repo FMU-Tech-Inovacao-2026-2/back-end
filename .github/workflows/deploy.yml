@@ -53,7 +53,8 @@ jobs:
         env:
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
           GEMINI_PROVEDOR: ${{ vars.GEMINI_PROVEDOR || 'vertex' }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.5-flash' }}
+          GEMINI_MODELOS_RESERVA: ${{ vars.GEMINI_MODELOS_RESERVA || 'gemini-3.8-flash;gemini-3.1-flash-lite' }}
           VERTEX_LOCATION: ${{ vars.VERTEX_LOCATION || 'us-central1' }}
           PROJETO: ${{ vars.GCP_PROJECT_ID }}
           RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
@@ -72,7 +73,7 @@ jobs:
             --max-instances 1 \
             --memory 512Mi \
             --set-secrets "JWT_SECRET=${SEGREDO_JWT}:latest" \
-            --set-env-vars "^@^NODE_ENV=production@TRUST_PROXY=1@HEALTHIA_MODO_PILOTO=true@LOG_LEVEL=info@CORS_ORIGIN=${CORS_ORIGIN}@GEMINI_PROVEDOR=${GEMINI_PROVEDOR}@GEMINI_MODEL=${GEMINI_MODEL}@GOOGLE_CLOUD_PROJECT=${PROJETO}@GOOGLE_CLOUD_LOCATION=${VERTEX_LOCATION}"
+            --set-env-vars "^@^NODE_ENV=production@TRUST_PROXY=1@HEALTHIA_MODO_PILOTO=true@LOG_LEVEL=info@CORS_ORIGIN=${CORS_ORIGIN}@GEMINI_PROVEDOR=${GEMINI_PROVEDOR}@GEMINI_MODEL=${GEMINI_MODEL}@GEMINI_MODELOS_RESERVA=${GEMINI_MODELOS_RESERVA//;/,}@GOOGLE_CLOUD_PROJECT=${PROJETO}@GOOGLE_CLOUD_LOCATION=${VERTEX_LOCATION}"
 
       - name: Confere /health
         run: |
